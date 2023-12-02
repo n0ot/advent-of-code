@@ -2,7 +2,7 @@ const std = @import("std");
 const expectEqual = std.testing.expectEqual;
 
 fn part1(input: []const u8) u32 {
-    var lines_iter = std.mem.splitScalar(u8, input, '\n');
+    var lines_iter = std.mem.tokenizeScalar(u8, input, '\n');
     var sum: u32 = 0;
     while (lines_iter.next()) |line| {
         if (line.len == 0) continue;
@@ -27,7 +27,7 @@ fn part1(input: []const u8) u32 {
 fn part2(input: []const u8) u32 {
     const numbers = [_][]const u8{ "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine" };
 
-    var lines_iter = std.mem.splitScalar(u8, input, '\n');
+    var lines_iter = std.mem.tokenizeScalar(u8, input, '\n');
     var sum: u32 = 0;
     while (lines_iter.next()) |line| {
         if (line.len == 0) continue;
