@@ -1,30 +1,32 @@
 const std = @import("std");
 const expectEqual = std.testing.expectEqual;
 
+const Color = enum { red, green, blue };
+
 fn part1(input: []const u8, red_max: u32, green_max: u32, blue_max: u32) !u32 {
     var lines_iter = std.mem.tokenizeScalar(u8, input, '\n');
     var sum: u32 = 0;
     game_blk: while (lines_iter.next()) |line| {
         if (line.len == 0) continue;
         var game_it = std.mem.splitSequence(u8, line, ": ");
-        const game_id_str = game_it.next();
-        const rounds = game_it.next();
-        if (game_id_str == null or rounds == null) continue;
-        if (game_id_str.?.len < 5 or !std.mem.eql(u8, game_id_str.?[0..5], "Game ")) return error.BadGameId;
-        const game_id = try std.fmt.parseInt(u32, game_id_str.?[5..], 10);
+        const game_id_str = game_it.next() orelse continue;
+        const rounds = game_it.next() orelse continue;
+        if (game_id_str.len < 5 or !std.mem.eql(u8, game_id_str[0..5], "Game ")) return error.ParseError;
+        const game_id = try std.fmt.parseInt(u32, game_id_str[5..], 10);
 
-        var rounds_it = std.mem.split(u8, rounds.?, "; ");
+        var rounds_it = std.mem.split(u8, rounds, "; ");
         while (rounds_it.next()) |round| {
             var draws_it = std.mem.splitSequence(u8, round, ", ");
             while (draws_it.next()) |draw| {
                 var color_amount_it = std.mem.splitSequence(u8, draw, " ");
-                const amount_str = color_amount_it.next();
-                const color = color_amount_it.next();
-                if (amount_str == null or color == null) continue :game_blk;
-                const amount = try std.fmt.parseInt(u8, amount_str.?, 10);
-                if (std.mem.eql(u8, color.?, "red") and amount > red_max) continue :game_blk;
-                if (std.mem.eql(u8, color.?, "green") and amount > green_max) continue :game_blk;
-                if (std.mem.eql(u8, color.?, "blue") and amount > blue_max) continue :game_blk;
+                const amount = try std.fmt.parseInt(u8, color_amount_it.next() orelse continue :game_blk, 10);
+                const color = std.meta.stringToEnum(Color, color_amount_it.next() orelse continue :game_blk) orelse continue :game_blk;
+                const max_amount = switch (color) {
+                    .red => red_max,
+                    .green => green_max,
+                    .blue => blue_max,
+                };
+                if (amount > max_amount) continue :game_blk;
             }
         }
         sum += game_id;
@@ -39,25 +41,22 @@ fn part2(input: []const u8) !u32 {
     game_blk: while (lines_iter.next()) |line| {
         if (line.len == 0) continue;
         var game_it = std.mem.splitSequence(u8, line, ": ");
-        _ = game_it.next();
-        const rounds = game_it.next();
-        if (rounds == null) continue;
-        var red_amount: u32 = 0;
-        var green_amount: u32 = 0;
-        var blue_amount: u32 = 0;
+        _ = game_it.next() orelse return error.ParseError;
+        const rounds = game_it.next() orelse return error.ParseError;
+        var red_amount: u32, var green_amount: u32, var blue_amount: u32 = .{ 0, 0, 0 };
 
-        var rounds_it = std.mem.split(u8, rounds.?, "; ");
+        var rounds_it = std.mem.split(u8, rounds, "; ");
         while (rounds_it.next()) |round| {
             var draws_it = std.mem.splitSequence(u8, round, ", ");
             while (draws_it.next()) |draw| {
                 var color_amount_it = std.mem.splitSequence(u8, draw, " ");
-                const amount_str = color_amount_it.next();
-                const color = color_amount_it.next();
-                if (amount_str == null or color == null) continue :game_blk;
-                const amount = try std.fmt.parseInt(u8, amount_str.?, 10);
-                if (std.mem.eql(u8, color.?, "red")) red_amount = @max(red_amount, amount);
-                if (std.mem.eql(u8, color.?, "green")) green_amount = @max(green_amount, amount);
-                if (std.mem.eql(u8, color.?, "blue")) blue_amount = @max(blue_amount, amount);
+                const amount = try std.fmt.parseInt(u8, color_amount_it.next() orelse continue :game_blk, 10);
+                const color = std.meta.stringToEnum(Color, color_amount_it.next() orelse continue :game_blk) orelse continue :game_blk;
+                switch (color) {
+                    .red => red_amount = @max(red_amount, amount),
+                    .green => green_amount = @max(green_amount, amount),
+                    .blue => blue_amount = @max(blue_amount, amount),
+                }
             }
         }
         sum += red_amount * green_amount * blue_amount;
