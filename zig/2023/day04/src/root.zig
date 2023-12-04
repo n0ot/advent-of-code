@@ -4,9 +4,10 @@ const expectEqual = std.testing.expectEqual;
 fn part1(input: []const u8) !usize {
     var lines_iter = std.mem.tokenizeScalar(u8, input, '\n');
     var sum: usize = 0;
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer if (gpa.deinit() == .leak) @panic("memory leak");
-    const allocator = gpa.allocator();
+    //var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    //defer if (gpa.deinit() == .leak) @panic("memory leak");
+    //const allocator = gpa.allocator();
+    const allocator = std.heap.c_allocator;
     while (lines_iter.next()) |line| {
         var card_it = std.mem.splitSequence(u8, line, ": ");
         _ = card_it.next(); // Don't care about card number
@@ -36,15 +37,16 @@ fn part2(input: []const u8) !usize {
     const allocator = gpa.allocator();
     var card_counts = std.AutoHashMap(usize, usize).init(allocator);
     defer card_counts.deinit();
+    var have_numbers = std.StringHashMap(void).init(allocator);
+    defer have_numbers.deinit();
     var card_num: usize = 1;
     while (lines_iter.next()) |line| : (card_num += 1) {
+        have_numbers.clearRetainingCapacity();
         var card_it = std.mem.splitSequence(u8, line, ": ");
         _ = card_it.next(); // Don't care about card number
         var numbers_it = std.mem.splitSequence(u8, card_it.next() orelse continue, " | ");
         var winning_numbers_it = std.mem.splitScalar(u8, numbers_it.next() orelse continue, ' ');
         var have_numbers_it = std.mem.splitScalar(u8, numbers_it.next() orelse continue, ' ');
-        var have_numbers = std.StringHashMap(void).init(allocator);
-        defer have_numbers.deinit();
         while (have_numbers_it.next()) |num| if (num.len > 0) try have_numbers.put(num, {});
 
         var points: usize = 0;
@@ -109,6 +111,8 @@ test "part 2 sample input" {
 test "part 2 puzzle input" {
     const input = @embedFile("input.txt");
     const answer = try std.fmt.parseInt(usize, try getAnswer(2), 10);
+    var timer = try std.time.Timer.start();
     const got = try part2(input);
+    std.debug.print("Elapsed: {d} NS\n", .{timer.read()});
     try expectEqual(answer, got);
 }
