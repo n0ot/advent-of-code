@@ -55,8 +55,7 @@ fn part2(input: []const u8) !usize {
         }
 
         const card_count = card_counts.get(card_num) orelse 1;
-        var i: usize = 0;
-        while (i < points) : (i += 1) {
+        for (0..points) |i| {
             const count = card_counts.get(card_num + i + 1) orelse 1; // Every card starts out with one copy
             try card_counts.put(card_num + i + 1, count + card_count); // Add one for each of the current card
         }
