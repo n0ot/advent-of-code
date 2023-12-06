@@ -96,13 +96,13 @@ const AlmanacParser = struct {
         .{ "humidity-to-location map", .humidity_location },
     });
 
-    pub fn parse(almanac: *Almanac, input: []const u8, seed_pairs_are_ranges: bool) !void {
+    pub fn parse(almanac: *Almanac, input: []const u8) !void {
         // The input is divided into blocks, separated by blank lines.
         var blocks_it = std.mem.tokenizeSequence(u8, input, "\n\n");
-        while (blocks_it.next()) |block| try parseBlock(almanac, block, seed_pairs_are_ranges);
+        while (blocks_it.next()) |block| try parseBlock(almanac, block);
     }
 
-    fn parseBlock(almanac: *Almanac, block: []const u8, seed_pairs_are_ranges: bool) !void {
+    fn parseBlock(almanac: *Almanac, block: []const u8) !void {
         if (block.len == 0) return;
         // The first line of each block is its header, in `key:[ value]` format.
         var lines_it = std.mem.tokenizeScalar(u8, block, '\n');
@@ -111,24 +111,10 @@ const AlmanacParser = struct {
         const header_value = std.mem.trimLeft(u8, header_it.next() orelse return ParseError.BadBlockHeader, " ");
 
         if (std.mem.eql(u8, header_key, "seeds")) {
-            var prev_seed: ?usize = null;
             var seeds_it = std.mem.tokenizeScalar(u8, header_value, ' ');
             while (seeds_it.next()) |seed_str| {
-                const cur_seed = try std.fmt.parseInt(usize, seed_str, 10);
-                if (seed_pairs_are_ranges) {
-                    // Interpret `prev_seed` as the start of a range,
-                    // and cur_seed as the length.
-                    // If prev_seed is null, this parsed number is the start of the range.
-                    if (prev_seed) |prev| {
-                        for (prev..prev + cur_seed) |s| {
-                            try almanac.addSeed(s);
-                        }
-                        prev_seed = null;
-                    } else prev_seed = cur_seed;
-                } else {
-                    // Parse each seed number individually.
-                    try almanac.addSeed(cur_seed);
-                }
+                const seed = try std.fmt.parseInt(usize, seed_str, 10);
+                try almanac.addSeed(seed);
             }
         } else {
             const mapping_type = mapping_types.get(header_key) orelse return ParseError.UnknownBlockType;
@@ -150,7 +136,7 @@ fn part1(input: []const u8) !usize {
 
     var almanac = Almanac.init(allocator);
     defer almanac.deinit();
-    try AlmanacParser.parse(&almanac, input, false);
+    try AlmanacParser.parse(&almanac, input);
     var lowest_location: ?usize = null;
     for (almanac.seeds.items) |seed| {
         const location = almanac.getSeedLocation(seed);
@@ -167,11 +153,20 @@ fn part2(input: []const u8) !usize {
 
     var almanac = Almanac.init(allocator);
     defer almanac.deinit();
-    try AlmanacParser.parse(&almanac, input, true);
+    try AlmanacParser.parse(&almanac, input);
+    var prev_seed: ?usize = null;
     var lowest_location: ?usize = null;
     for (almanac.seeds.items) |seed| {
-        const location = almanac.getSeedLocation(seed);
-        lowest_location = if (lowest_location) |lowest| @min(lowest, location) else location;
+        // Interpret `prev_seed` as the start of a range,
+        // and seed as the length.
+        // If prev_seed is null, this parsed number is the start of the range.
+        if (prev_seed) |prev| {
+            for (prev..prev + seed) |s| {
+                const location = almanac.getSeedLocation(s);
+                lowest_location = if (lowest_location) |lowest| @min(lowest, location) else location;
+            }
+            prev_seed = null;
+        } else prev_seed = seed;
     }
 
     return lowest_location orelse error.NoLocationsFound;
