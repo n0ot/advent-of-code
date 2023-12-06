@@ -29,6 +29,11 @@ const Almanac = struct {
         humidity_location,
     };
 
+    const MapResult = struct {
+        value: usize,
+        remaining: usize,
+    };
+
     pub fn init(allocator: std.mem.Allocator) Self {
         var almanac = Almanac{
             .seeds = std.ArrayList(usize).init(allocator),
@@ -48,7 +53,7 @@ const Almanac = struct {
         try self.seeds.append(seed);
     }
 
-    pub fn addMappingRange(self: *Self, mapping_type: MappingType, dst_start: usize, src_start: usize, len: usize) !void {
+    pub fn addRangeMapping(self: *Self, mapping_type: MappingType, dst_start: usize, src_start: usize, len: usize) !void {
         var map = &self.maps[@intFromEnum(mapping_type)];
         // Always insert sorted.
         const idx = blk: for (map.items, 0..) |range, i| {
@@ -57,25 +62,32 @@ const Almanac = struct {
         try map.insert(idx, .{ .dst_start = dst_start, .src_start = src_start, .len = len });
     }
 
-    pub fn getMapping(self: *Self, mapping_type: MappingType, src: usize) usize {
+    pub fn get(self: *Self, mapping_type: MappingType, src: usize) MapResult {
         const map = &self.maps[@intFromEnum(mapping_type)];
         if (std.sort.binarySearch(Range, src, map.items, {}, Range.contains)) |i| {
             const range = map.items[i];
-            return src - range.src_start + range.dst_start;
+            return .{ .value = src - range.src_start + range.dst_start, .remaining = range.len + range.src_start - src - 1 };
         }
-        return src;
+        return .{ .value = src, .remaining = 0 };
     }
 
-    pub fn getSeedLocation(self: *Self, seed: usize) usize {
-        var dst = self.getMapping(.seed_soil, seed);
-        dst = self.getMapping(.soil_fertilizer, dst);
-        dst = self.getMapping(.fertilizer_water, dst);
-        dst = self.getMapping(.water_light, dst);
-        dst = self.getMapping(.light_temperature, dst);
-        dst = self.getMapping(.temperature_humidity, dst);
-        dst = self.getMapping(.humidity_location, dst);
+    pub fn getSeedLocation(self: *Self, seed: usize) MapResult {
+        var result = self.get(.seed_soil, seed);
+        var min_remaining = result.remaining;
+        result = self.get(.soil_fertilizer, result.value);
+        min_remaining = @min(min_remaining, result.remaining);
+        result = self.get(.fertilizer_water, result.value);
+        min_remaining = @min(min_remaining, result.remaining);
+        result = self.get(.water_light, result.value);
+        min_remaining = @min(min_remaining, result.remaining);
+        result = self.get(.light_temperature, result.value);
+        min_remaining = @min(min_remaining, result.remaining);
+        result = self.get(.temperature_humidity, result.value);
+        min_remaining = @min(min_remaining, result.remaining);
+        result = self.get(.humidity_location, result.value);
+        min_remaining = @min(min_remaining, result.remaining);
 
-        return dst;
+        return .{ .value = result.value, .remaining = min_remaining };
     }
 };
 
@@ -123,7 +135,7 @@ const AlmanacParser = struct {
                 const dst_start = try std.fmt.parseInt(usize, range_it.next() orelse return ParseError.BadMappingRange, 10);
                 const src_start = try std.fmt.parseInt(usize, range_it.next() orelse return ParseError.BadMappingRange, 10);
                 const len = try std.fmt.parseInt(usize, range_it.next() orelse return ParseError.BadMappingRange, 10);
-                try almanac.addMappingRange(mapping_type, dst_start, src_start, len);
+                try almanac.addRangeMapping(mapping_type, dst_start, src_start, len);
             }
         }
     }
@@ -139,8 +151,8 @@ fn part1(input: []const u8) !usize {
     try AlmanacParser.parse(&almanac, input);
     var lowest_location: ?usize = null;
     for (almanac.seeds.items) |seed| {
-        const location = almanac.getSeedLocation(seed);
-        lowest_location = if (lowest_location) |lowest| @min(lowest, location) else location;
+        const locationResult = almanac.getSeedLocation(seed);
+        lowest_location = if (lowest_location) |lowest| @min(lowest, locationResult.value) else locationResult.value;
     }
 
     return lowest_location orelse error.NoLocationsFound;
@@ -161,9 +173,13 @@ fn part2(input: []const u8) !usize {
         // and seed as the length.
         // If prev_seed is null, this parsed number is the start of the range.
         if (prev_seed) |prev| {
-            for (prev..prev + seed) |s| {
-                const location = almanac.getSeedLocation(s);
-                lowest_location = if (lowest_location) |lowest| @min(lowest, location) else location;
+            var i = prev;
+            while (i < prev + seed) : (i += 1) {
+                const locationResult = almanac.getSeedLocation(i);
+                lowest_location = if (lowest_location) |lowest| @min(lowest, locationResult.value) else locationResult.value;
+                // Since we only care about the lowest location,
+                // it's okay to skip past the rest of the values in a contiguous range.
+                i += locationResult.remaining;
             }
             prev_seed = null;
         } else prev_seed = seed;
@@ -270,6 +286,8 @@ test "part 2 sample input" {
 test "part 2 puzzle input" {
     const input = @embedFile("input.txt");
     const answer = try std.fmt.parseInt(usize, try getAnswer(2), 10);
+    var timer = try std.time.Timer.start();
     const got = try part2(input);
+    std.debug.print("Elapsed: {} NS\n", .{timer.read()});
     try expectEqual(answer, got);
 }
