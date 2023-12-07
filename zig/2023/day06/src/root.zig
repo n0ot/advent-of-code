@@ -9,23 +9,20 @@ const Race = struct {
 };
 
 fn numWinningTimes(duration: usize, record_distance: usize) usize {
-    // I know this can be worked out algebraically, but whatever.
-    // We'll binary search it instead.
-    // At least it's uniform in both directions, so we only have to search half the space.
-    var low: usize = 1;
-    var high: usize = duration / 2 + 1;
-    while (low < high) {
-        const mid = low + (high - low) / 2;
-        if (mid * (duration - mid) > record_distance and (mid - 1) * (duration - mid + 1) <= record_distance) {
-            return duration + 1 - 2 * mid;
-        } else if (mid * (duration - mid) > record_distance) {
-            high = mid;
-        } else {
-            low = mid + 1;
-        }
-    }
+    // Let `t` = the duration, and `d` = the record distance.
+    // Solving for `x`, the minimum time to win, we get the equation
+    // `x(t-x) > d`.
+    // Rearranging this, we get `-x^2+tx > d`.
+    // Again, we can arrange this as the quadratic equation (`ax^2+bx+c`) `-x^2+tx-d = 0`,
+    // and use the quadratic formula `(-b±sqrt(b^2-4ac)/2a`.
+    // Simplifying that a bit, the minimum winning number must be > `t/2 - sqrt(t^2/4 - d)`.
+    const duration_f: f64 = @floatFromInt(duration);
+    const record_distance_f: f64 = @floatFromInt(record_distance);
+    var min_winning: usize = @intFromFloat(@ceil(duration_f / 2.0 - std.math.sqrt(duration_f * duration_f / 4.0 - record_distance_f)));
+    // The minimum winning time must beat, not equal the record distance.
+    if (min_winning * (duration - min_winning) == record_distance) min_winning += 1;
 
-    return 0;
+    return duration + 1 - 2 * min_winning;
 }
 
 fn part1(input: []const u8) !usize {
