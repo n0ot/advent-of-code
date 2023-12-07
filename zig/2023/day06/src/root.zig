@@ -18,9 +18,7 @@ fn numWinningTimes(duration: usize, record_distance: usize) usize {
     // Simplifying that a bit, the minimum winning number must be > `t/2 - sqrt(t^2/4 - d)`.
     const duration_f: f64 = @floatFromInt(duration);
     const record_distance_f: f64 = @floatFromInt(record_distance);
-    var min_winning: usize = @intFromFloat(@ceil(duration_f / 2.0 - std.math.sqrt(duration_f * duration_f / 4.0 - record_distance_f)));
-    // The minimum winning time must beat, not equal the record distance.
-    if (min_winning * (duration - min_winning) == record_distance) min_winning += 1;
+    const min_winning: usize = @intFromFloat(@floor(duration_f / 2.0 - std.math.sqrt(duration_f * duration_f / 4.0 - record_distance_f)) + 1);
 
     return duration + 1 - 2 * min_winning;
 }
