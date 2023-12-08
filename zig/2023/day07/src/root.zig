@@ -43,16 +43,7 @@ const Hand = struct {
             std.mem.copyForwards(u8, &sorted_hand, input);
             std.sort.heap(u8, &sorted_hand, {}, std.sort.asc(u8));
 
-            const Count = struct {
-                value: ?u8 = null,
-                count: u8 = 0,
-
-                pub fn lessThan(_: void, self: @This(), other: @This()) bool {
-                    return self.count < other.count;
-                }
-            };
-
-            var counts = [_]Count{.{}} ** 5;
+            var counts = [_]u8{0} ** 5;
             var prev: ?u8 = null;
             var num_j_cards: u8 = 0;
             var i: u8 = 0;
@@ -62,20 +53,19 @@ const Hand = struct {
                 if (part == 2 and card == 'J') {
                     num_j_cards += 1;
                 } else {
-                    counts[i].value = card;
-                    counts[i].count += 1;
+                    counts[i] += 1;
                 }
             }
 
-            std.sort.heap(Count, &counts, {}, Count.lessThan);
-            if (part == 2) counts[4].count += num_j_cards;
+            std.sort.heap(u8, &counts, {}, std.sort.asc(u8));
+            if (part == 2) counts[4] += num_j_cards;
 
-            if (counts[4].count == 5) return .FiveOfAKind;
-            if (counts[4].count == 4) return .FourOfAKind;
-            if (counts[4].count == 3 and counts[3].count == 2) return .FullHouse;
-            if (counts[4].count == 3) return .threeOfAKind;
-            if (counts[4].count == 2 and counts[3].count == 2) return .twoPair;
-            if (counts[4].count == 2) return .onePair;
+            if (counts[4] == 5) return .FiveOfAKind;
+            if (counts[4] == 4) return .FourOfAKind;
+            if (counts[4] == 3 and counts[3] == 2) return .FullHouse;
+            if (counts[4] == 3) return .threeOfAKind;
+            if (counts[4] == 2 and counts[3] == 2) return .twoPair;
+            if (counts[4] == 2) return .onePair;
             return .highCard;
         }
     };
