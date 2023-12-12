@@ -13,7 +13,7 @@ const Direction = enum {
     west,
 };
 
-fn findAnimal(ground: [][]const u8, start_pos: Point, start_direction: Direction) !?usize {
+fn findAnimal(ground: [][]const u8, start_pos: Point, start_direction: Direction, comptime foundVertex: fn (ground: [][]const u8, point: Point) void) !?usize {
     var pos = start_pos;
     var direction = start_direction;
     var i: usize = 0;
@@ -34,10 +34,12 @@ fn findAnimal(ground: [][]const u8, start_pos: Point, start_direction: Direction
             },
             'L' => switch (direction) {
                 .south => {
+                    foundVertex(ground, pos);
                     direction = .east;
                     col += 1;
                 },
                 .west => {
+                    foundVertex(ground, pos);
                     direction = .north;
                     row -= 1;
                 },
@@ -45,10 +47,12 @@ fn findAnimal(ground: [][]const u8, start_pos: Point, start_direction: Direction
             },
             'J' => switch (direction) {
                 .south => {
+                    foundVertex(ground, pos);
                     direction = .west;
                     col -= 1;
                 },
                 .east => {
+                    foundVertex(ground, pos);
                     direction = .north;
                     row -= 1;
                 },
@@ -56,10 +60,12 @@ fn findAnimal(ground: [][]const u8, start_pos: Point, start_direction: Direction
             },
             '7' => switch (direction) {
                 .north => {
+                    foundVertex(ground, pos);
                     direction = .west;
                     col -= 1;
                 },
                 .east => {
+                    foundVertex(ground, pos);
                     direction = .south;
                     row += 1;
                 },
@@ -67,16 +73,18 @@ fn findAnimal(ground: [][]const u8, start_pos: Point, start_direction: Direction
             },
             'F' => switch (direction) {
                 .north => {
+                    foundVertex(ground, pos);
                     direction = .east;
                     col += 1;
                 },
                 .west => {
+                    foundVertex(ground, pos);
                     direction = .south;
                     row += 1;
                 },
                 else => return null,
             },
-            'S' => {}, // Next iteration will break
+            'S' => foundVertex(ground, pos), // S may not actually be a vertex, but that's okay
             '.' => return null,
             else => return error.InvalidTile,
         }
@@ -103,17 +111,21 @@ fn part1(input: []const u8) !usize {
     }
     if (s_pos == null) return error.NoAnimalFound;
 
+    const foundVertex = (struct {
+        pub fn foundVertex(_: [][]const u8, _: Point) void {}
+    }).foundVertex;
+
     if (s_pos.?.row > 0) {
-        if (try findAnimal(lines.items, .{ .row = s_pos.?.row - 1, .col = s_pos.?.col }, .north)) |steps| return (steps + 1) / 2;
+        if (try findAnimal(lines.items, .{ .row = s_pos.?.row - 1, .col = s_pos.?.col }, .north, foundVertex)) |steps| return (steps + 1) / 2;
     }
     if (s_pos.?.row < lines.items.len - 1) {
-        if (try findAnimal(lines.items, .{ .row = s_pos.?.row + 1, .col = s_pos.?.col }, .south)) |steps| return (steps + 1) / 2;
+        if (try findAnimal(lines.items, .{ .row = s_pos.?.row + 1, .col = s_pos.?.col }, .south, foundVertex)) |steps| return (steps + 1) / 2;
     }
     if (s_pos.?.col > 0) {
-        if (try findAnimal(lines.items, .{ .row = s_pos.?.row, .col = s_pos.?.col - 1 }, .west)) |steps| return (steps + 1) / 2;
+        if (try findAnimal(lines.items, .{ .row = s_pos.?.row, .col = s_pos.?.col - 1 }, .west, foundVertex)) |steps| return (steps + 1) / 2;
     }
     if (s_pos.?.col < lines.items[0].len - 1) {
-        if (try findAnimal(lines.items, .{ .row = s_pos.?.row, .col = s_pos.?.col + 1 }, .east)) |steps| return (steps + 1) / 2;
+        if (try findAnimal(lines.items, .{ .row = s_pos.?.row, .col = s_pos.?.col + 1 }, .east, foundVertex)) |steps| return (steps + 1) / 2;
     }
 
     return error.AnimalNotNearAPipe;
