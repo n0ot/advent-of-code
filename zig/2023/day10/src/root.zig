@@ -24,7 +24,7 @@ const Direction = enum {
     west,
 };
 
-fn findAnimal(ground: [][]const u8, start_pos: Point, start_direction: Direction, comptime foundVertex: fn (ground: [][]const u8, point: Point) void) !?usize {
+fn findAnimal(ground: [][]const u8, start_pos: Point, start_direction: Direction, comptime foundVertex: fn ([][]const u8, Point) void) !?usize {
     var pos = start_pos;
     var direction = start_direction;
     const last = Point{ .row = ground.len - 1, .col = ground[0].len - 1 };
@@ -103,6 +103,24 @@ fn findAnimal(ground: [][]const u8, start_pos: Point, start_direction: Direction
     return i;
 }
 
+fn findLoop(ground: [][]const u8, point: Point, comptime foundVertex: fn ([][]const u8, Point) void) !usize {
+    const last = Point{ .row = ground.len - 1, .col = ground[0].len - 1 };
+    if (point.moved(.north, last)) |_| {
+        if (try findAnimal(ground, .{ .row = point.row - 1, .col = point.col }, .north, foundVertex)) |steps| return (steps + 1) / 2;
+    }
+    if (point.moved(.south, last)) |_| {
+        if (try findAnimal(ground, .{ .row = point.row + 1, .col = point.col }, .south, foundVertex)) |steps| return (steps + 1) / 2;
+    }
+    if (point.moved(.west, last)) |_| {
+        if (try findAnimal(ground, .{ .row = point.row, .col = point.col - 1 }, .west, foundVertex)) |steps| return (steps + 1) / 2;
+    }
+    if (point.moved(.east, last)) |_| {
+        if (try findAnimal(ground, .{ .row = point.row, .col = point.col + 1 }, .east, foundVertex)) |steps| return (steps + 1) / 2;
+    }
+
+    return error.NoLoopFound;
+}
+
 fn part1(input: []const u8) !usize {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer if (gpa.deinit() == .leak) @panic("Leak!");
@@ -122,20 +140,7 @@ fn part1(input: []const u8) !usize {
         pub fn foundVertex(_: [][]const u8, _: Point) void {}
     }).foundVertex;
 
-    if (s_pos.?.row > 0) {
-        if (try findAnimal(lines.items, .{ .row = s_pos.?.row - 1, .col = s_pos.?.col }, .north, foundVertex)) |steps| return (steps + 1) / 2;
-    }
-    if (s_pos.?.row < lines.items.len - 1) {
-        if (try findAnimal(lines.items, .{ .row = s_pos.?.row + 1, .col = s_pos.?.col }, .south, foundVertex)) |steps| return (steps + 1) / 2;
-    }
-    if (s_pos.?.col > 0) {
-        if (try findAnimal(lines.items, .{ .row = s_pos.?.row, .col = s_pos.?.col - 1 }, .west, foundVertex)) |steps| return (steps + 1) / 2;
-    }
-    if (s_pos.?.col < lines.items[0].len - 1) {
-        if (try findAnimal(lines.items, .{ .row = s_pos.?.row, .col = s_pos.?.col + 1 }, .east, foundVertex)) |steps| return (steps + 1) / 2;
-    }
-
-    return error.AnimalNotNearAPipe;
+    return findLoop(lines.items, s_pos.?, foundVertex);
 }
 
 fn getAnswer(comptime part: comptime_int) ![]const u8 {
