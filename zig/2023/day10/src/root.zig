@@ -4,6 +4,17 @@ const expectEqual = std.testing.expectEqual;
 const Point = struct {
     row: usize,
     col: usize,
+
+    const Self = @This();
+
+    pub fn moved(self: Self, direction: Direction, last: Point) ?Self {
+        return switch (direction) {
+            .north => if (self.row > 0) .{ .row = self.row - 1, .col = self.col } else null,
+            .east => if (self.col < last.col) .{ .row = self.row, .col = self.col + 1 } else null,
+            .south => if (self.row < last.row) .{ .row = self.row + 1, .col = self.col } else null,
+            .west => if (self.col > 0) .{ .row = self.row, .col = self.col - 1 } else null,
+        };
+    }
 };
 
 const Direction = enum {
@@ -16,81 +27,77 @@ const Direction = enum {
 fn findAnimal(ground: [][]const u8, start_pos: Point, start_direction: Direction, comptime foundVertex: fn (ground: [][]const u8, point: Point) void) !?usize {
     var pos = start_pos;
     var direction = start_direction;
+    const last = Point{ .row = ground.len - 1, .col = ground[0].len - 1 };
     var i: usize = 0;
     while (ground[pos.row][pos.col] != 'S') : (i += 1) {
-        var row: isize = @intCast(pos.row);
-        var col: isize = @intCast(pos.col);
-
-        switch (ground[pos.row][pos.col]) {
+        pos = switch (ground[pos.row][pos.col]) {
             '|' => switch (direction) {
-                .north => row -= 1,
-                .south => row += 1,
+                .north, .south => pos.moved(direction, last) orelse return null,
                 else => return null,
             },
             '-' => switch (direction) {
-                .west => col -= 1,
-                .east => col += 1,
+                .east, .west => pos.moved(direction, last) orelse return null,
                 else => return null,
             },
             'L' => switch (direction) {
-                .south => {
+                .south => blk: {
                     foundVertex(ground, pos);
                     direction = .east;
-                    col += 1;
+                    break :blk pos.moved(direction, last) orelse return null;
                 },
-                .west => {
+                .west => blk: {
                     foundVertex(ground, pos);
                     direction = .north;
-                    row -= 1;
+                    break :blk pos.moved(direction, last) orelse return null;
                 },
                 else => return null,
             },
             'J' => switch (direction) {
-                .south => {
+                .south => blk: {
                     foundVertex(ground, pos);
                     direction = .west;
-                    col -= 1;
+                    break :blk pos.moved(direction, last) orelse return null;
                 },
-                .east => {
+                .east => blk: {
                     foundVertex(ground, pos);
                     direction = .north;
-                    row -= 1;
+                    break :blk pos.moved(direction, last) orelse return null;
                 },
                 else => return null,
             },
             '7' => switch (direction) {
-                .north => {
+                .north => blk: {
                     foundVertex(ground, pos);
                     direction = .west;
-                    col -= 1;
+                    break :blk pos.moved(direction, last) orelse return null;
                 },
-                .east => {
+                .east => blk: {
                     foundVertex(ground, pos);
                     direction = .south;
-                    row += 1;
+                    break :blk pos.moved(direction, last) orelse return null;
                 },
                 else => return null,
             },
             'F' => switch (direction) {
-                .north => {
+                .north => blk: {
                     foundVertex(ground, pos);
                     direction = .east;
-                    col += 1;
+                    break :blk pos.moved(direction, last) orelse return null;
                 },
-                .west => {
+                .west => blk: {
                     foundVertex(ground, pos);
                     direction = .south;
-                    row += 1;
+                    break :blk pos.moved(direction, last) orelse return null;
                 },
                 else => return null,
             },
-            'S' => foundVertex(ground, pos), // S may not actually be a vertex, but that's okay
+            'S' => blk: {
+                foundVertex(ground, pos); // S may not actually be a vertex, but that's okay
+                break :blk pos;
+            },
             '.' => return null,
             else => return error.InvalidTile,
-        }
-
-        if (row < 0 or row >= ground.len or col < 0 or col >= ground[0].len) return null;
-        pos = .{ .row = @intCast(row), .col = @intCast(col) };
+        };
     }
 
     return i;
