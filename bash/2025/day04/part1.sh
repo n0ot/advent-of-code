@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 . helper.sh
-read_rolls
+declare -A rolls
 declare -A removeable
-get_removeable removeable
+read_rolls rolls removeable
 echo "${#removeable[@]}"

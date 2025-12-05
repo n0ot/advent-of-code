@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 . helper.sh
-read_rolls
+declare -A rolls
 declare -A removeable
-get_removeable removeable
+read_rolls rolls removeable
 
 total=0
 while [[ ${#removeable[@]} -ne 0 ]]; do
@@ -13,9 +13,9 @@ while [[ ${#removeable[@]} -ne 0 ]]; do
         IFS=. read -r row col <<<"$roll"
         for check_roll in {$((row - 1)),"$row",$((row + 1))}.{$((col - 1)),"$col",$((col + 1))}; do
             [[ $check_roll = "$roll" ]] && continue # Don't check your own roll
-            [[ ${rolls["$check_roll"]} != @ ]] && continue
-            [[ -n ${removeable["$check_roll"]} ]] && continue
-            is_removeable "$check_roll" && removeable["$check_roll"]=@
+            [[ -z ${rolls["$check_roll"]} ]] && continue
+            ((rolls["$check_roll"]--))
+            [[ ${rolls["$check_roll"]} -lt 4 ]] && removeable["$check_roll"]=@
         done
         unset 'removeable['"$roll"']'
     done
