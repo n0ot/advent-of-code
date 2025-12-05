@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 get_to_remove() {
-    to_remove=()
+    local -n _to_remove_ref="$1"
+    _to_remove_ref=()
     local row col
     for roll in "${!rolls[@]}"; do
         local count=0
@@ -10,23 +11,17 @@ get_to_remove() {
             [[ $check_roll = "$row.$col" ]] && continue # Don't check your own roll
             [[ -n ${rolls[$check_roll]} ]] && ((count++))
         done
-        [[ $count -lt 4 ]] && to_remove+=("$roll")
+        [[ $count -lt 4 ]] && _to_remove_ref+=("$roll")
     done
 }
 
 declare -A rolls
 read_rolls() {
-    local c
-    local i=0 j=0
-    while IFS= read -rn1 c; do
-        case "$c" in
-        '') # newline
-            ((i++))
-            j=-1 # will be set to 0 when incremented
-            ;;
-        @) rolls["$i.$j"]=@ ;;
-        *) ;;
-        esac
-        ((j++))
+    local line i=0 j
+    while IFS= read -r line; do
+        for ((j = 0; j < ${#line}; j++)); do
+            [[ ${line:$j:1} = @ ]] && rolls["$i.$j"]=@
+        done
+        ((i++))
     done
 }
