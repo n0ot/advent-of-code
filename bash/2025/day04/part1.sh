@@ -2,5 +2,5 @@
 
 . helper.sh
 read_rolls
-IFS=' ' read -ra to_remove <<<"$(can_remove)"
+get_to_remove
 echo "${#to_remove[@]}"

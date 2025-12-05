@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-can_remove() {
+get_to_remove() {
+    to_remove=()
     local row col
     for roll in "${!rolls[@]}"; do
         local count=0
@@ -9,18 +10,23 @@ can_remove() {
             [[ $check_roll = "$row.$col" ]] && continue # Don't check your own roll
             [[ -n ${rolls[$check_roll]} ]] && ((count++))
         done
-        [[ $count -lt 4 ]] && printf '%s ' "$roll"
+        [[ $count -lt 4 ]] && to_remove+=("$roll")
     done
-    echo
 }
 
 declare -A rolls
 read_rolls() {
-    i=0
-    while read -r line; do
-        for ((j = 0; j < ${#line}; j++)); do
-            [[ ${line:$j:1} = @ ]] && rolls["${i}.${j}"]=@
-        done
-        ((i++))
+    local c
+    local i=0 j=0
+    while IFS= read -rn1 c; do
+        case "$c" in
+        '') # newline
+            ((i++))
+            j=-1 # will be set to 0 when incremented
+            ;;
+        @) rolls["$i.$j"]=@ ;;
+        *) ;;
+        esac
+        ((j++))
     done
 }
