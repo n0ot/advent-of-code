@@ -2,17 +2,22 @@
 
 . helper.sh
 read_rolls
+declare -A removeable
+get_removeable removeable
 
 total=0
-while :; do
-    ((i++))
-    to_remove=()
-    get_to_remove to_remove
-    [[ ${#to_remove[@]} -eq 0 ]] && break
-    for roll in "${to_remove[@]}"; do
+while [[ ${#removeable[@]} -ne 0 ]]; do
+    ((total += ${#removeable[@]}))
+    for roll in "${!removeable[@]}"; do
         unset 'rolls['"$roll"']'
+        IFS=. read -r row col <<<"$roll"
+        for check_roll in {$((row - 1)),"$row",$((row + 1))}.{$((col - 1)),"$col",$((col + 1))}; do
+            [[ $check_roll = "$roll" ]] && continue # Don't check your own roll
+            [[ ${rolls["$check_roll"]} != @ ]] && continue
+            is_removeable "$check_roll" && removeable["$check_roll"]=@
+        done
+        unset 'removeable['"$roll"']'
     done
-    ((total += ${#to_remove[@]}))
 done
 
 echo "$total"

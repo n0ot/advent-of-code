@@ -2,5 +2,6 @@
 
 . helper.sh
 read_rolls
-get_to_remove to_remove
-echo "${#to_remove[@]}"
+declare -A removeable
+get_removeable removeable
+echo "${#removeable[@]}"
