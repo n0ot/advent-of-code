@@ -8,8 +8,7 @@ mapfile -t points
 declare -A pairs_map # A set, with format "distance point1 idx point2_idx"
 for i in "${!points[@]}"; do
     IFS=, read -r x1 y1 z1 <<<"${points[i]}"
-    for ((j = i; j < ${#points[@]}; j++)); do
-        [[ $i -eq $j ]] && continue
+    for ((j = i + 1; j < ${#points[@]}; j++)); do
         IFS=, read -r x2 y2 z2 <<<"${points[j]}"
         # Normally, the distance formula requires sqrt, but bash can't do that, and bc is too slow.
         # That's fine; we don't really need the true distance, just correct sorting.
